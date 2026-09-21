@@ -4,6 +4,7 @@ import tokenStorage from './tokenStorage';
 import toast from 'react-hot-toast';
 import {
   createAdaptPlayersResponse,
+  createAdaptMarketResponse,
   createTeamsMasterLoader,
   createAdaptCalendarResponse,
   adaptStandingResponse,
@@ -181,6 +182,7 @@ const api = new ApiClient({
 // Bind response adapters to this api client
 const loadTeamsMaster = createTeamsMasterLoader(api);
 const adaptPlayersResponse = createAdaptPlayersResponse(loadTeamsMaster);
+const adaptMarketResponse = createAdaptMarketResponse(loadTeamsMaster);
 const adaptCalendarResponse = createAdaptCalendarResponse(loadTeamsMaster);
 
 // Interceptor para añadir el token de autenticación
@@ -350,7 +352,7 @@ export const fantasyAPI = {
   getPremiumConfiguration: () => api.get('/v4/leagues/premium-configuration?x-lang=es'),
 
   // Mercado
-  getMarket: (leagueId) => api.get(`${CMP}/league/${leagueId}/market?x-lang=es`),
+  getMarket: (leagueId) => api.get(`${CMP}/league/${leagueId}/market?x-lang=es`).then(adaptMarketResponse),
 
   // Jugadores
   getAllPlayers: () => api.get(`${CMP}/players?x-lang=es`).then(adaptPlayersResponse),

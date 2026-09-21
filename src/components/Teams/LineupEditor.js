@@ -8,6 +8,7 @@ import {
 import { fantasyAPI } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
 import LoadingSpinner from '../Common/LoadingSpinner';
+import TeamBadge from '../Common/TeamBadge';
 import toast from 'react-hot-toast';
 
 const LineupEditor = () => {
@@ -874,13 +875,7 @@ const PlayerSelectionModal = ({ position, onClose, onSelect, getAvailablePlayers
                     </div>
 
                     {/* Team Badge */}
-                    {player.team?.badgeColor && (
-                      <img
-                        src={player.team.badgeColor}
-                        alt={player.team.name}
-                        className="w-10 h-10 object-contain"
-                      />
-                    )}
+                    <TeamBadge team={player.team} className="w-10 h-10" />
                   </button>
                 );
               })}
@@ -961,8 +956,9 @@ const PositionPlayersList = ({ title, players, lineup, color }) => {
                     <div className="font-medium text-gray-900 dark:text-white text-sm truncate">
                       {player.nickname || player.name}
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                      <div className="flex items-center gap-2 mt-0.5">
+                      <TeamBadge team={player.team} className="w-4 h-4" />
+                        <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
                         {player.team?.shortName || player.team?.name}
                       </div>
                       {inLineup && (

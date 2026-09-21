@@ -16,6 +16,7 @@ import playerOwnershipService from '../../services/playerOwnershipService';
 import useMarketTrends from '../../hooks/useMarketTrends';
 import usePlayerFaceBackfill from '../../hooks/usePlayerFaceBackfill';
 import { getClauseLockState } from '../../utils/clauseUtils';
+import TeamBadge from '../Common/TeamBadge';
 
 const LaLigaTeams = () => {
   const leagueId = useAuthStore((state) => state.leagueId);
@@ -284,14 +285,7 @@ const LaLigaTeams = () => {
             </h3>
             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
               <span>{player.team?.name}</span>
-              {player.team?.badgeColor && (
-                <img
-                  src={player.team.badgeColor}
-                  alt={`${player.team.name} badge`}
-                  className="w-5 h-5 object-contain"
-                  onError={(e) => { e.target.style.display = 'none'; }}
-                />
-              )}
+              <TeamBadge team={player.team} />
             </div>
           </div>
 
@@ -669,4 +663,3 @@ const LaLigaTeams = () => {
 };
 
 export default LaLigaTeams;
-

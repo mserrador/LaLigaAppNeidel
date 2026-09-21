@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { formatNumber, formatNumberWithDots, getPositionColor } from '../../utils/helpers';
 import teamService from '../../services/teamService';
 import { getClauseStatusColor } from '../../utils/clauseUtils';
+import TeamBadge from '../Common/TeamBadge';
 
 /**
  * PlayerListItem — single market card.
@@ -116,14 +117,7 @@ const PlayerListItem = ({
           </h3>
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span>{player.team?.name}</span>
-            {player.team?.badgeColor && (
-              <img
-                src={player.team.badgeColor}
-                alt={`${player.team.name} badge`}
-                className="w-5 h-5 object-contain"
-                onError={(e) => { e.target.style.display = 'none'; }}
-              />
-            )}
+            <TeamBadge team={player.team} />
           </div>
         </div>
 

@@ -2,6 +2,7 @@ import React from 'react';
 import ProgressiveImage from './ProgressiveImage';
 import { BellRing } from 'lucide-react';
 import { useAlertStore } from '../../stores/alertStore';
+import TeamBadge from './TeamBadge';
 
 const PlayerCard = ({ player, onClick, showAlertIndicator = true }) => {
   const hasActiveAlerts = useAlertStore((state) => state.hasActiveAlerts);
@@ -79,14 +80,7 @@ const PlayerCard = ({ player, onClick, showAlertIndicator = true }) => {
               <div className="flex items-center gap-1 text-xs">
                 <span>•</span>
                 <span>{player.team.name}</span>
-                {player.team.badgeColor && (
-                  <img 
-                    src={player.team.badgeColor} 
-                    alt={`${player.team.name} badge`}
-                    className="w-5 h-5 object-contain"
-                    onError={(e) => { e.target.style.display = 'none'; }}
-                  />
-                )}
+                <TeamBadge team={player.team} />
               </div>
             )}
           </div>

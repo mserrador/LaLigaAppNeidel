@@ -7,6 +7,7 @@ import { fantasyAPI } from '../../../services/api';
 import teamService from '../../../services/teamService';
 import { invalidateMarketData } from '../../../utils/cacheInvalidation';
 import { createMoneyInputHandler } from '../../../utils/moneyInput';
+import TeamBadge from '../../Common/TeamBadge';
 
 /**
  * BidFlow — bid input + confirm + cancel-bid confirm.
@@ -250,14 +251,7 @@ const BidFlow = ({
                                         <span className="text-base font-medium text-gray-600 dark:text-gray-300">
                                             {selectedPlayer.player.team?.name}
                                         </span>
-                                        {selectedPlayer.player.team?.badgeColor && (
-                                            <img
-                                                src={selectedPlayer.player.team.badgeColor}
-                                                alt={`${selectedPlayer.player.team.name} badge`}
-                                                className="w-6 h-6 object-contain"
-                                                onError={(e) => { e.target.style.display = 'none'; }}
-                                            />
-                                        )}
+                                        <TeamBadge team={selectedPlayer.player.team} className="w-6 h-6" />
                                     </div>
                                     <div>
                                         <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">

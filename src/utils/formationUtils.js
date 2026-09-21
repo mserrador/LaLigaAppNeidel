@@ -19,8 +19,9 @@ export const flattenPositionKeyedPlayers = (positionKeyed) => {
     if (!positionKeyed || typeof positionKeyed !== 'object') return players;
 
     Object.entries(positionKeyed).forEach(([position, playersList]) => {
-        if (!Array.isArray(playersList)) return;
-        const positionId = FORMATION_POSITION_IDS[position] ?? 1;
+        // tacticalFormation is also an array ([4, 5, 1]), but never a player list.
+        if (!Object.prototype.hasOwnProperty.call(FORMATION_POSITION_IDS, position) || !Array.isArray(playersList)) return;
+        const positionId = FORMATION_POSITION_IDS[position];
         players.push(...playersList.map((player) => ({
             ...player,
             positionId,

@@ -82,6 +82,28 @@ export const createAdaptPlayersResponse = (loadTeamsMaster) => async (response) 
   return { ...response, data: Array.isArray(response.data) ? normalized : { ...response.data, elements: normalized } };
 };
 
+/**
+ * Market entries embed a raw playerMaster with teamId but no team object.
+ * Normalize it just like the global player list so all market consumers have
+ * the team name and badge URL available.
+ */
+export const createAdaptMarketResponse = (loadTeamsMaster) => async (response) => {
+  const list = Array.isArray(response?.data) ? response.data
+    : (Array.isArray(response?.data?.elements) ? response.data.elements : null);
+  if (!list) return response;
+
+  const teamsMap = await loadTeamsMaster();
+  const normalized = list.map((entry) => ({
+    ...entry,
+    playerMaster: normalizePlayer(entry.playerMaster, teamsMap),
+  }));
+
+  return {
+    ...response,
+    data: Array.isArray(response.data) ? normalized : { ...response.data, elements: normalized },
+  };
+};
+
 export const normalizeStandingEntry = (entry) => {
   if (!entry || typeof entry !== 'object') return entry;
   const team = entry.team || {};

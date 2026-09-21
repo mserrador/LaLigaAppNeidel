@@ -10,6 +10,7 @@ import LoadingSpinner from '../Common/LoadingSpinner';
 import PlayerDetailModal from '../Common/PlayerDetailModal';
 import marketTrendsService from '../../services/marketTrendsService';
 import { findPlayerByNameAndPosition, mapSpecialNameForTrends } from '../../utils/playerNameMatcher';
+import TeamBadge from '../Common/TeamBadge';
 
 const MarketTrends = () => {
   const location = useLocation();
@@ -657,9 +658,10 @@ const MarketTrends = () => {
                             {player.positionName}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-1">
-                          {player.team?.name}
-                        </p>
+                        <div className="flex items-center gap-1 mt-1 text-sm text-gray-600 dark:text-gray-400 min-w-0">
+                          <TeamBadge team={player.team} className="w-4 h-4" />
+                          <span className="truncate">{player.team?.name}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -754,14 +756,7 @@ const MarketTrends = () => {
                           </span>
                           <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                             <span className="truncate">{player.team?.name}</span>
-                            {player.team?.badgeColor && (
-                              <img
-                                src={player.team.badgeColor}
-                                alt={`${player.team.name} badge`}
-                                className="w-6 h-6 object-contain flex-shrink-0"
-                                onError={(e) => { e.target.style.display = 'none'; }}
-                              />
-                            )}
+                            <TeamBadge team={player.team} className="w-6 h-6" />
                           </div>
                           {!player.matchedPlayer && (
                             <span className="px-3 py-1 bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 text-sm rounded-full flex-shrink-0">
@@ -835,4 +830,3 @@ const MarketTrends = () => {
 };
 
 export default MarketTrends;
-

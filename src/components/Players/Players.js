@@ -14,6 +14,7 @@ import playerOwnershipService from '../../services/playerOwnershipService';
 import useMarketTrends from '../../hooks/useMarketTrends';
 import usePlayerFaceBackfill from '../../hooks/usePlayerFaceBackfill';
 import { mapSpecialNameForTrends, normalizePlayerName } from '../../utils/playerNameMatcher';
+import TeamBadge from '../Common/TeamBadge';
 
 // La API marca así a los jugadores fuera de la liga (bajas o, en pretemporada,
 // jugadores actuales aún no activados). No se descartan: se muestran
@@ -80,14 +81,7 @@ const PlayerGridCard = React.memo(function PlayerGridCard({ player }) {
           </h3>
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span>{player.team?.name}</span>
-            {player.team?.badgeColor && (
-              <img
-                src={player.team.badgeColor}
-                alt={`${player.team.name} badge`}
-                className="w-5 h-5 object-contain"
-                onError={(e) => { e.target.style.display = 'none'; }}
-              />
-            )}
+            <TeamBadge team={player.team} />
           </div>
         </div>
 
@@ -825,4 +819,3 @@ const Players = () => {
 };
 
 export default Players;
-

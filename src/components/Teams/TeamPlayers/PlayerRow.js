@@ -3,6 +3,7 @@ import { motion } from '../../../utils/motionShim';
 import { Clock, Unlock, Shield, Plus, ShoppingCart, X, Trophy, TrendingUp } from 'lucide-react';
 import { formatNumber, formatNumberWithDots, getPositionName, getPositionColor } from '../../../utils/helpers';
 import { getClauseStatusColor, getClauseLockState } from '../../../utils/clauseUtils';
+import TeamBadge from '../../Common/TeamBadge';
 
 const PlayerRow = ({
     playerTeam,
@@ -70,14 +71,7 @@ const PlayerRow = ({
                     </h3>
                     <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                         <span>{player.team?.name}</span>
-                        {player.team?.badgeColor && (
-                            <img
-                                src={player.team.badgeColor}
-                                alt={`${player.team.name} badge`}
-                                className="w-5 h-5 object-contain"
-                                onError={(e) => { e.target.style.display = 'none'; }}
-                            />
-                        )}
+                        <TeamBadge team={player.team} />
                     </div>
                 </div>
 

@@ -17,6 +17,7 @@ import LoadingSpinner from '../Common/LoadingSpinner';
 import LoadingState from '../Common/LoadingState';
 import EmptyState from '../Common/EmptyState';
 import PlayerDetailModal from '../Common/PlayerDetailModal';
+import { getTeamBadgeUrl } from '../Common/TeamBadge';
 import useModalFlow from '../../hooks/useModalFlow';
 import useMarketTrends from '../../hooks/useMarketTrends';
 import useTeamService from '../../hooks/useTeamService';
@@ -236,7 +237,7 @@ const Clauses = () => {
               playerName: player.nickname || player.name,
               playerImage: player.images?.transparent?.['256x256'] || null,
               teamName: player.team?.name || 'N/D',
-              teamBadge: player.team?.badgeColor || null,
+              teamBadge: getTeamBadgeUrl(player.team),
               position: getPositionName(player.positionId),
               positionId: player.positionId,
               points: player.points || 0,

@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import Modal from '../../Common/Modal';
 import { fantasyAPI } from '../../../services/api';
 import { isSuccessResponse } from '../../../utils/helpers';
+import TeamBadge from '../../Common/TeamBadge';
 
 /**
  * ShieldFlow — modal #1 (info) + modal #2 (confirm) for shielding a player.
@@ -97,7 +98,8 @@ const ShieldFlow = ({
                                     <h4 className="font-semibold text-gray-900 dark:text-white">
                                         {selectedPlayer.player.nickname || selectedPlayer.player.name}
                                     </h4>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    <p className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+                                        <TeamBadge team={selectedPlayer.player.team} className="w-4 h-4" />
                                         {selectedPlayer.player.team?.name}
                                     </p>
                                 </div>

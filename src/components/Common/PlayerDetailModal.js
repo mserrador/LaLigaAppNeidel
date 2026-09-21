@@ -10,6 +10,7 @@ import LoadingSpinner from './LoadingSpinner';
 import QuickAlertButton from './QuickAlertButton';
 import { useCurrentWeek } from '../../hooks/useCurrentWeek';
 import { formatCurrencyCompact } from '../../utils/helpers';
+import TeamBadge from './TeamBadge';
 
 const PlayerDetailModal = ({ isOpen, onClose, player }) => {
   const [nextOpponent, setNextOpponent] = useState(null);
@@ -285,8 +286,8 @@ const PlayerDetailModal = ({ isOpen, onClose, player }) => {
                 player.name || player.nickname || 'Jugador';
               const playerPosition =
                 pm?.position || mp?.position || player.position || 'Posición';
-              const playerTeam =
-                pm?.team?.name || mp?.team?.name || player.team?.name || null;
+              const playerTeamData = pm?.team || mp?.team || player.team || null;
+              const playerTeam = playerTeamData?.name || null;
               const lastSeason = pm?.lastSeasonPoints;
               const initial = (playerName?.[0] || '?').toUpperCase();
 
@@ -318,11 +319,12 @@ const PlayerDetailModal = ({ isOpen, onClose, player }) => {
                         <User className="w-3.5 h-3.5 flex-shrink-0" />
                         <span className="truncate">{playerPosition}</span>
                       </span>
-                      {playerTeam && (
-                        <span className="inline-flex items-center gap-1.5">
-                          <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span className="truncate">{playerTeam}</span>
-                        </span>
+                        {playerTeam && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                            <TeamBadge team={playerTeamData} className="w-4 h-4" />
+                            <span className="truncate">{playerTeam}</span>
+                          </span>
                       )}
                       {lastSeason ? (
                         <span className="inline-flex items-center gap-1.5">
@@ -409,8 +411,9 @@ const PlayerDetailModal = ({ isOpen, onClose, player }) => {
                       </div>
                       <div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">Equipo</p>
-                        <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                          {player.team?.name || player.teamName || 'N/A'}
+                        <p className="flex items-center gap-1.5 text-lg font-semibold text-gray-900 dark:text-white">
+                          <TeamBadge team={player.team || player.playerMaster?.team} className="w-5 h-5" />
+                          {player.team?.name || player.playerMaster?.team?.name || player.teamName || 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -874,5 +877,3 @@ const PlayerDetailModal = ({ isOpen, onClose, player }) => {
 };
 
 export default PlayerDetailModal;
-
-

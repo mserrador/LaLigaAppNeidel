@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { invalidateAfterOfferResponse } from '../../utils/cacheInvalidation';
 import { formatCurrency } from '../../utils/helpers';
+import TeamBadge from '../Common/TeamBadge';
 
 const OfertasTab = () => {
   const [playersWithOffers, setPlayersWithOffers] = useState([]);
@@ -246,14 +247,7 @@ const OfertasTab = () => {
                   </h3>
                   <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                     <span className="truncate">{player.playerMaster.team?.name}</span>
-                    {player.playerMaster.team?.badgeColor && (
-                      <img
-                        src={player.playerMaster.team.badgeColor}
-                        alt="badge"
-                        className="w-5 h-5 object-contain flex-shrink-0"
-                        onError={(e) => { e.target.style.display = 'none'; }}
-                      />
-                    )}
+                    <TeamBadge team={player.playerMaster.team} />
                   </div>
                 </div>
                 <div className="flex items-center bg-primary-600 text-white px-3 py-1.5 rounded-full text-sm font-bold">

@@ -16,6 +16,7 @@ import LeagueStandings from './LeagueStandings';
 import UpcomingMatches from './UpcomingMatches';
 import LineupRiskBanner from './LineupRiskBanner';
 import LiveTeamPoints from './LiveTeamPoints';
+import LeagueExportButton from '../Common/LeagueExportButton';
 
 const Dashboard = () => {
     const leagueId = useAuthStore((state) => state.leagueId);
@@ -145,7 +146,8 @@ const Dashboard = () => {
                         Bienvenido a {leagueName || 'La Liga Fantasy'}
                     </p>
                 </div>
-                <div className="flex gap-2">
+                 <div className="flex gap-2">
+                    <LeagueExportButton />
                     <button
                         onClick={handleRefresh}
                         disabled={isFetchingMoney || loadingStandings}
@@ -213,4 +215,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

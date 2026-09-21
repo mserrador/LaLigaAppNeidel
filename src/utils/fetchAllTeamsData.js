@@ -53,6 +53,48 @@ export const fetchAllTeamsData = async (queryClient, leagueId, standings, option
 };
 
 /**
+ * Igual que fetchAllTeamsData, pero conserva los fallos individuales para
+ * procesos que necesitan informar de una recopilación parcial, como una
+ * exportación de liga. No cambia el contrato de los consumidores existentes.
+ */
+export const fetchAllTeamsDataDetailed = async (queryClient, leagueId, standings, options = {}) => {
+    const {
+        concurrency = 3,
+        staleTime = 0,
+        gcTime = 30 * 60 * 1000,
+    } = options;
+
+    const teams = extractArray(standings)
+        .map((entry) => ({ entry, teamId: entry.id || entry.team?.id }))
+        .filter(({ teamId }) => teamId);
+    const results = new Map();
+    const errors = [];
+    let nextIndex = 0;
+
+    const worker = async () => {
+        while (nextIndex < teams.length) {
+            const current = teams[nextIndex];
+            nextIndex += 1;
+            try {
+                const teamData = await queryClient.fetchQuery({
+                    queryKey: ['teamData', leagueId, current.teamId],
+                    queryFn: () => fantasyAPI.getTeamData(leagueId, current.teamId),
+                    staleTime,
+                    gcTime,
+                });
+                results.set(current.teamId, { teamData, entry: current.entry });
+            } catch (error) {
+                errors.push({ teamId: current.teamId, entry: current.entry, error });
+            }
+        }
+    };
+
+    const workerCount = Math.max(1, Math.min(concurrency, teams.length));
+    await Promise.all(Array.from({ length: workerCount }, worker));
+    return { results, errors };
+};
+
+/**
  * Extrae la lista de jugadores (playerTeam[]) de un teamData con las
  * distintas formas de respuesta del API.
  */

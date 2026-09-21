@@ -7,6 +7,7 @@ import teamService from '../../services/teamService';
 import { invalidateAfterBid } from '../../utils/cacheInvalidation';
 import useModalFlow from '../../hooks/useModalFlow';
 import { createMoneyInputHandler } from '../../utils/moneyInput';
+import TeamBadge from '../Common/TeamBadge';
 
 /**
  * useBidFlow — encapsulates bid modal state + submission for the Market.
@@ -173,14 +174,7 @@ export const BidModal = ({
               <span className="text-base font-medium text-gray-600 dark:text-gray-300">
                 {playerData.team?.name}
               </span>
-              {playerData.team?.badgeColor && (
-                <img
-                  src={playerData.team.badgeColor}
-                  alt={`${playerData.team.name} badge`}
-                  className="w-6 h-6 object-contain"
-                  onError={(e) => { e.target.style.display = 'none'; }}
-                />
-              )}
+              <TeamBadge team={playerData.team} className="w-6 h-6" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

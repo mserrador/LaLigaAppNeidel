@@ -5,6 +5,7 @@ import { Trophy, Star, TrendingUp } from 'lucide-react';
 import { fantasyAPI } from '../../services/api';
 import { formatNumber, extractArray } from '../../utils/helpers';
 import LoadingSpinner from '../Common/LoadingSpinner';
+import TeamBadge from '../Common/TeamBadge';
 
 const TopPlayers = () => {
   const { data: players, isLoading } = useQuery({
@@ -106,9 +107,10 @@ const TopPlayers = () => {
                   {getPositionName(player.positionId)}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {getPlayerTeam(player)}
-              </p>
+              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 min-w-0">
+                <TeamBadge team={player.team} className="w-4 h-4" />
+                <p className="truncate">{getPlayerTeam(player)}</p>
+              </div>
             </div>
 
             {/* Points */}
