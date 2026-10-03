@@ -23,6 +23,8 @@ import MyBidsSummary from './MyBidsSummary';
 import FilterBar, { POSITIONS } from './FilterBar';
 import PlayerListItem from './PlayerListItem';
 import { useBidFlow, BidModal } from './BidFlow';
+import useUpcomingFixtures from '../../hooks/useUpcomingFixtures';
+import { getUpcomingFixturesForTeam } from '../../utils/upcomingFixtures';
 
 const extractPlayers = extractArray;
 
@@ -31,6 +33,7 @@ const Market = () => {
   const leagueId = useAuthStore((state) => state.leagueId);
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
+  const { fixtures, isLoading: fixturesLoading } = useUpcomingFixtures();
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -314,27 +317,36 @@ const Market = () => {
 
           {/* Players Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredPlayers.map((item, index) => (
-              <motion.div
-                key={item.playerMaster.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <PlayerListItem
-                  item={item}
-                  positions={POSITIONS}
-                  marketTrendsService={marketTrendsService}
-                  playerOwnershipService={playerOwnershipService}
-                  onPlayerClick={handlePlayerClick}
-                  onBidClick={bidFlow.openBid}
-                  leagueId={leagueId}
-                  refetch={refetch}
-                  setOfferChangeKey={setOfferChangeKey}
-                  offersVersion={`${offerChangeKey}-${bidsLoaded ? 1 : 0}`}
-                />
-              </motion.div>
-            ))}
+            {filteredPlayers.map((item, index) => {
+              const player = item.playerMaster;
+              const upcomingFixtures = getUpcomingFixturesForTeam(
+                fixtures,
+                player.team || { id: player.teamId }
+              );
+              return (
+                <motion.div
+                  key={player.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <PlayerListItem
+                    item={item}
+                    positions={POSITIONS}
+                    marketTrendsService={marketTrendsService}
+                    playerOwnershipService={playerOwnershipService}
+                    onPlayerClick={handlePlayerClick}
+                    onBidClick={bidFlow.openBid}
+                    leagueId={leagueId}
+                    refetch={refetch}
+                    setOfferChangeKey={setOfferChangeKey}
+                    offersVersion={`${offerChangeKey}-${bidsLoaded ? 1 : 0}`}
+                    upcomingFixtures={upcomingFixtures}
+                    fixtureLoading={fixturesLoading}
+                  />
+                </motion.div>
+              );
+            })}
           </div>
 
           {filteredPlayers.length === 0 && (

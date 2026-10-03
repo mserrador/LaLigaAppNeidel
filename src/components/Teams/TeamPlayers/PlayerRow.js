@@ -1,9 +1,10 @@
 import React from 'react';
 import { motion } from '../../../utils/motionShim';
-import { Clock, Unlock, Shield, Plus, ShoppingCart, X, Trophy, TrendingUp } from 'lucide-react';
+import { Clock, Unlock, Shield, Plus, ShoppingCart, X, Trophy, TrendingUp, Euro } from 'lucide-react';
 import { formatNumber, formatNumberWithDots, getPositionName, getPositionColor } from '../../../utils/helpers';
 import { getClauseStatusColor, getClauseLockState } from '../../../utils/clauseUtils';
 import TeamBadge from '../../Common/TeamBadge';
+import UpcomingFixtures from '../../Common/UpcomingFixtures';
 
 const PlayerRow = ({
     playerTeam,
@@ -21,6 +22,9 @@ const PlayerRow = ({
     onWithdrawFromMarket,
     onBid,
     onCancelBid,
+    onPayClause,
+    upcomingFixtures,
+    fixtureLoading,
 }) => {
     const player = playerTeam.playerMaster;
     if (!player) return null;
@@ -74,6 +78,8 @@ const PlayerRow = ({
                         <TeamBadge team={player.team} />
                     </div>
                 </div>
+
+                <UpcomingFixtures fixtures={upcomingFixtures} isLoading={fixtureLoading} />
 
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -267,7 +273,7 @@ const PlayerRow = ({
 
                 {/* Bid/Cancel Bid - other teams */}
                 {!isCurrentUserTeam && playerTeam?.buyoutClause && (
-                    <div className="pt-3 border-t border-gray-200 dark:border-dark-border">
+                    <div className="pt-3 border-t border-gray-200 dark:border-dark-border space-y-2">
                         {hasUserBid(playerTeam) ? (
                             <button
                                 type="button"
@@ -295,6 +301,22 @@ const PlayerRow = ({
                                 Pujar
                             </button>
                         )}
+                        {clauseOpen && onPayClause && (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onPayClause(player, playerTeam);
+                                }}
+                                onMouseDown={(e) => e.preventDefault()}
+                                className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded-lg transition-colors text-sm font-medium"
+                                aria-label={`Pagar cláusula de ${player.nickname || player.name}`}
+                            >
+                                <Euro className="w-4 h-4" />
+                                Pagar cláusula
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
@@ -312,6 +334,9 @@ export default React.memo(PlayerRow, (prev, next) => {
         prev.index === next.index &&
         prev.isPlayerInMarket === next.isPlayerInMarket &&
         prev.hasUserBid === next.hasUserBid &&
+        prev.onPayClause === next.onPayClause &&
+        prev.upcomingFixtures === next.upcomingFixtures &&
+        prev.fixtureLoading === next.fixtureLoading &&
         prev.getMarketExpirationInfo === next.getMarketExpirationInfo &&
         prev.getPlayerTrendData === next.getPlayerTrendData
     );

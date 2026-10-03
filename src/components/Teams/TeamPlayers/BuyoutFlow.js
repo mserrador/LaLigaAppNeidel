@@ -5,6 +5,7 @@ import Modal from '../../Common/Modal';
 import { formatNumberWithDots, isSuccessResponse } from '../../../utils/helpers';
 import { createMoneyInputHandler } from '../../../utils/moneyInput';
 import { fantasyAPI } from '../../../services/api';
+import { recordExactClauseInvestment } from '../../../services/leagueFinanceService';
 
 /**
  * BuyoutFlow — modal #1 (input) + modal #2 (confirm) for increasing buyout clause.
@@ -17,6 +18,7 @@ const BuyoutFlow = ({
     selectedPlayer,
     teamMoney,
     leagueId,
+    teamId,
     refetch,
     onReset,
 }) => {
@@ -68,6 +70,14 @@ const BuyoutFlow = ({
             // 2xx como éxito (igual que ShieldFlow). Antes esto dejaba el modal
             // colgado y parecía que "Aumentar Cláusula" no funcionaba.
             if (isSuccessResponse(response)) {
+                recordExactClauseInvestment({
+                    leagueId,
+                    teamId,
+                    playerTeamId,
+                    playerId: selectedPlayer.player.id,
+                    playerName: selectedPlayer.player.nickname || selectedPlayer.player.name,
+                    amount: parseInt(increaseAmount),
+                });
                 await refetch();
                 setIncreaseAmount('');
                 flow.reset();

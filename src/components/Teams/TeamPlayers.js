@@ -15,18 +15,26 @@ import useModalFlow from '../../hooks/useModalFlow';
 import useMarketTrends from '../../hooks/useMarketTrends';
 import useTeamService from '../../hooks/useTeamService';
 import { getPositionName, getPositionColor, extractArray, readTeamMoney } from '../../utils/helpers';
+import { validateClauseAmount } from '../../utils/validation';
+import { invalidateAfterClausePurchase } from '../../utils/cacheInvalidation';
+import { getTeamBadgeUrl } from '../Common/TeamBadge';
+import useUpcomingFixtures from '../../hooks/useUpcomingFixtures';
+import { getUpcomingFixturesForTeam } from '../../utils/upcomingFixtures';
 
 import PlayerRow from './TeamPlayers/PlayerRow';
 import BuyoutFlow from './TeamPlayers/BuyoutFlow';
 import MarketListFlow from './TeamPlayers/MarketListFlow';
 import BidFlow from './TeamPlayers/BidFlow';
 import ShieldFlow from './TeamPlayers/ShieldFlow';
+import PaymentFlow from '../Clauses/PaymentFlow';
+import PaymentConfirmModal from '../Clauses/PaymentConfirmModal';
 
 const TeamPlayers = () => {
     const { teamId } = useParams();
     const leagueId = useAuthStore((state) => state.leagueId);
     const user = useAuthStore((state) => state.user);
     const queryClient = useQueryClient();
+    const { fixtures, isLoading: fixturesLoading } = useUpcomingFixtures();
 
     // Trends + team service init via los hooks compartidos
     const { trendsReady: trendsInitialized, isFetching: trendsLoading } = useMarketTrends();
@@ -34,6 +42,7 @@ const TeamPlayers = () => {
 
     // Shared selection state across flows
     const [selectedPlayer, setSelectedPlayer] = useState(null);
+    const [selectedClause, setSelectedClause] = useState(null);
     const [teamMoney, setTeamMoney] = useState(null);
 
     // Offer/market pending operations + force-refresh key
@@ -52,6 +61,13 @@ const TeamPlayers = () => {
     const bidFlow = useModalFlow();
     const cancelBidFlow = useModalFlow();
     const shieldFlow = useModalFlow();
+    const clausePaymentFlow = useModalFlow();
+    const {
+        open: openClausePayment,
+        confirm: showClausePaymentConfirmation,
+        close: closeClausePaymentFlow,
+        setProcessing: setClausePaymentProcessing,
+    } = clausePaymentFlow;
 
     // Queries
     const { data: teamData, isLoading, error, refetch } = useQuery({
@@ -262,6 +278,96 @@ const TeamPlayers = () => {
         cancelBidFlow.confirm();
     }, [cancelBidFlow]);
 
+    const getCurrentUserTeamId = useCallback(() => {
+        const userTeam = standingsData.find(team => {
+            const teamUserId = team.userId || team.team?.userId || team.team?.manager?.id;
+            return teamUserId && user?.userId && teamUserId.toString() === user.userId.toString();
+        });
+        return userTeam?.id || userTeam?.team?.id || teamService.getTeamId();
+    }, [standingsData, user?.userId]);
+
+    const closeClausePayment = useCallback(() => {
+        closeClausePaymentFlow();
+        setSelectedClause(null);
+        setTeamMoney(null);
+    }, [closeClausePaymentFlow]);
+
+    const handlePayClause = useCallback(async (player, playerTeam) => {
+        const clause = {
+            playerId: player.id,
+            playerTeamId: playerTeam.playerTeamId || playerTeam.id,
+            playerName: player.nickname || player.name,
+            playerImage: player.images?.transparent?.['256x256'] || null,
+            teamName: player.team?.name || 'N/D',
+            teamBadge: getTeamBadgeUrl(player.team),
+            clausulaAmount: playerTeam.buyoutClause,
+            teamId,
+        };
+
+        setSelectedClause(clause);
+        openClausePayment();
+
+        try {
+            const buyerTeamId = getCurrentUserTeamId();
+            if (!buyerTeamId) throw new Error('No se pudo encontrar tu equipo');
+            const moneyResponse = await fantasyAPI.getTeamMoney(buyerTeamId);
+            setTeamMoney(readTeamMoney(moneyResponse));
+        } catch (_error) {
+            setTeamMoney(undefined);
+            toast.error('Error al obtener información del equipo');
+        }
+    }, [teamId, openClausePayment, getCurrentUserTeamId]);
+
+    const handleConfirmClausePayment = useCallback(async () => {
+        if (!selectedClause) return;
+
+        setClausePaymentProcessing(true);
+        try {
+            if (!selectedClause.playerTeamId) throw new Error('No se pudo identificar al jugador');
+            if (!validateClauseAmount(selectedClause.clausulaAmount)) {
+                throw new Error('Importe de cláusula no válido');
+            }
+
+            await fantasyAPI.payBuyoutClause(
+                leagueId,
+                selectedClause.playerTeamId,
+                selectedClause.clausulaAmount
+            );
+
+            const buyerTeamId = getCurrentUserTeamId();
+            if (buyerTeamId) {
+                await invalidateAfterClausePurchase(
+                    queryClient,
+                    leagueId,
+                    buyerTeamId,
+                    selectedClause.teamId
+                );
+            } else {
+                await refetch();
+            }
+
+            closeClausePayment();
+            toast.success('¡Cláusula pagada con éxito! El jugador ha sido fichado.', {
+                duration: 4000,
+                position: 'bottom-right',
+            });
+        } catch (error) {
+            let errorMessage = 'Error al pagar la cláusula. Inténtalo de nuevo.';
+            const apiError = error.response?.data?.message || error.response?.data?.error;
+
+            if (apiError) errorMessage = `Error: ${apiError}`;
+            else if (error.response?.status === 409) {
+                errorMessage = 'La cláusula no está disponible para pago en este momento.';
+            } else if (error.message) errorMessage = error.message;
+
+            toast.error(errorMessage, { duration: 6000 });
+            closeClausePayment();
+            await refetch();
+        } finally {
+            setClausePaymentProcessing(false);
+        }
+    }, [selectedClause, setClausePaymentProcessing, leagueId, getCurrentUserTeamId, queryClient, refetch, closeClausePayment]);
+
     const handleShieldPlayer = useCallback(async (player, playerTeam) => {
         try {
             await fantasyAPI.checkPlayerShield(leagueId, playerTeam.playerTeamId || playerTeam.id);
@@ -370,6 +476,10 @@ const TeamPlayers = () => {
                             {players.map((playerTeam, index) => {
                                 const player = playerTeam.playerMaster;
                                 if (!player) return null;
+                                const upcomingFixtures = getUpcomingFixturesForTeam(
+                                    fixtures,
+                                    player.team || { id: player.teamId }
+                                );
                                 return (
                                     <PlayerRow
                                         key={`${player.id || index}-${offerChangeKey}`}
@@ -388,6 +498,9 @@ const TeamPlayers = () => {
                                         onWithdrawFromMarket={handleWithdrawFromMarket}
                                         onBid={handleBidOnPlayer}
                                         onCancelBid={handleCancelBid}
+                                        onPayClause={handlePayClause}
+                                        upcomingFixtures={upcomingFixtures}
+                                        fixtureLoading={fixturesLoading}
                                     />
                                 );
                             })}
@@ -426,6 +539,7 @@ const TeamPlayers = () => {
                 selectedPlayer={selectedPlayer}
                 teamMoney={teamMoney}
                 leagueId={leagueId}
+                teamId={teamId}
                 refetch={refetch}
                 onReset={resetSelection}
             />
@@ -464,6 +578,22 @@ const TeamPlayers = () => {
                 leagueId={leagueId}
                 refetch={refetch}
                 onReset={resetSelection}
+            />
+
+            <PaymentFlow
+                isOpen={clausePaymentFlow.isOpen && !clausePaymentFlow.isConfirming}
+                clause={selectedClause}
+                availableMoney={teamInitialized ? teamService.getAvailableMoney() : teamMoney}
+                onClose={closeClausePayment}
+                onContinue={showClausePaymentConfirmation}
+            />
+
+            <PaymentConfirmModal
+                isOpen={clausePaymentFlow.isConfirming}
+                clause={selectedClause}
+                isProcessing={clausePaymentFlow.isProcessing}
+                onClose={closeClausePayment}
+                onConfirm={handleConfirmClausePayment}
             />
 
             <PlayerDetailModal

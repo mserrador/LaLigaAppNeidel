@@ -15,6 +15,9 @@ import useMarketTrends from '../../hooks/useMarketTrends';
 import usePlayerFaceBackfill from '../../hooks/usePlayerFaceBackfill';
 import { mapSpecialNameForTrends, normalizePlayerName } from '../../utils/playerNameMatcher';
 import TeamBadge from '../Common/TeamBadge';
+import UpcomingFixtures from '../Common/UpcomingFixtures';
+import useUpcomingFixtures from '../../hooks/useUpcomingFixtures';
+import { getUpcomingFixturesForTeam } from '../../utils/upcomingFixtures';
 
 // La API marca así a los jugadores fuera de la liga (bajas o, en pretemporada,
 // jugadores actuales aún no activados). No se descartan: se muestran
@@ -28,7 +31,7 @@ const OUT_OF_LEAGUE_STATUSES = ['out_of_league', 'OutofLeague', 'OUT_OF_LEAGUE']
  * the search box / loading more batches doesn't re-render every visible card;
  * the parent keeps the motion wrapper, key, ref and click handler.
  */
-const PlayerGridCard = React.memo(function PlayerGridCard({ player }) {
+const PlayerGridCard = React.memo(function PlayerGridCard({ player, upcomingFixtures, fixtureLoading }) {
   return (
     <>
       {/* Player Image */}
@@ -84,6 +87,8 @@ const PlayerGridCard = React.memo(function PlayerGridCard({ player }) {
             <TeamBadge team={player.team} />
           </div>
         </div>
+
+        <UpcomingFixtures fixtures={upcomingFixtures} isLoading={fixtureLoading} />
 
         {/* Main Stats Grid */}
         <div className="grid grid-cols-2 gap-2 text-sm">
@@ -175,6 +180,7 @@ const Players = () => {
   const leagueId = useAuthStore((state) => state.leagueId);
   const queryClient = useQueryClient();
   const location = useLocation();
+  const { fixtures, isLoading: fixturesLoading } = useUpcomingFixtures();
 
   const [searchTerm, setSearchTerm] = useState('');
   // Defer search input updates to keep UI responsive while filtering
@@ -743,6 +749,10 @@ const Players = () => {
         {displayedPlayers.map((player, index) => {
           const animationDelay = index < 12 ? index * 0.015 : 0;
           const isOOL = player.isOutOfLeague;
+          const upcomingFixtures = getUpcomingFixturesForTeam(
+            fixtures,
+            player.team || { id: player.teamId }
+          );
           return (
           <motion.div
             key={player.id || index}
@@ -760,7 +770,11 @@ const Players = () => {
               </span>
             )}
             <div className={isOOL ? 'opacity-50 grayscale' : ''}>
-              <PlayerGridCard player={player} />
+              <PlayerGridCard
+                player={player}
+                upcomingFixtures={upcomingFixtures}
+                fixtureLoading={fixturesLoading}
+              />
             </div>
           </motion.div>
           );

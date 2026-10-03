@@ -120,6 +120,7 @@ class ApiClient {
       timeout: config.timeout ?? this.timeout,
       _retry: config._retry,
       _tokenRefreshAttempted: config._tokenRefreshAttempted,
+      suppressErrorToast: config.suppressErrorToast,
     });
     let finalURL = merged.url;
     if (merged.params && typeof merged.params === 'object') {
@@ -218,9 +219,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    const suppressErrorToast = Boolean(error.config?.suppressErrorToast);
     // Manejar errores de conexión
     if (!error.response) {
-      if (error.code === 'ERR_NETWORK') {
+      if (suppressErrorToast) {
+        // Background probes can fail without interrupting the user.
+      } else if (error.code === 'ERR_NETWORK') {
         toast.error('❌ Error de red: No se puede conectar con el servidor proxy.');
       } else if (error.code === 'ECONNABORTED') {
         toast.error('⏱️ Timeout: El servidor tardó demasiado en responder.');
@@ -292,19 +296,19 @@ api.interceptors.response.use(
       }
 
       case 403:
-        toast.error('⛔ Acceso denegado.');
+        if (!suppressErrorToast) toast.error('⛔ Acceso denegado.');
         break;
 
       case 404:
-        toast.error('🔍 Recurso no encontrado.');
+        if (!suppressErrorToast) toast.error('🔍 Recurso no encontrado.');
         break;
 
       case 429:
-        toast.error('⏱️ Demasiadas peticiones: El servidor ha limitado temporalmente las solicitudes. Por favor, espera unos segundos e intenta de nuevo.');
+        if (!suppressErrorToast) toast.error('⏱️ Demasiadas peticiones: El servidor ha limitado temporalmente las solicitudes. Por favor, espera unos segundos e intenta de nuevo.');
         break;
 
       case 500:
-        toast.error('💥 Error del servidor.');
+        if (!suppressErrorToast) toast.error('💥 Error del servidor.');
         break;
 
       case 502:
@@ -312,7 +316,7 @@ api.interceptors.response.use(
         break;
 
       default:
-        toast.error(`⚠️ Error ${status}: ${message || 'Error desconocido'}`);
+        if (!suppressErrorToast) toast.error(`⚠️ Error ${status}: ${message || 'Error desconocido'}`);
         break;
     }
 
@@ -397,7 +401,7 @@ export const fantasyAPI = {
   },
 
   // Ofertas y dinero
-  getTeamMoney: (teamId) => api.get(`${CMP}/teams/${teamId}/money?x-lang=es`),
+  getTeamMoney: (teamId, config) => api.get(`${CMP}/teams/${teamId}/money?x-lang=es`, config),
   getPlayerOffer: (leagueId, playerTeamId) => api.get(`${CMP}/league/${leagueId}/playerTeam/${playerTeamId}/offer?x-lang=es`),
 
   // Pujar por jugadores

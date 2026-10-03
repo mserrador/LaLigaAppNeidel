@@ -3,6 +3,12 @@ import marketTrendsService from '../services/marketTrendsService';
 import { extractArray, getPositionName, readTeamMoney } from './helpers';
 import { fetchAllTeamsDataDetailed } from './fetchAllTeamsData';
 import { flattenPositionKeyedPlayers } from './formationUtils';
+import {
+  FIXTURE_WINDOW_DAYS,
+  getUpcomingFixturesForTeam,
+  loadUpcomingFixtures,
+} from './upcomingFixtures';
+import { INITIAL_CASH, loadLeagueFinances } from '../services/leagueFinanceService';
 
 const ACTIVITY_PAGE_COUNT = 5;
 const TEAM_CONCURRENCY = 3;
@@ -108,6 +114,24 @@ const summarizeLastMatches = (lastStats) => {
   });
 
   return Array.from(byWeek.values()).map(({ _minutes, _infoCount, ...match }) => match);
+};
+
+const serializeUpcomingFixtures = (schedule, player) => {
+  const team = player?.team || (player?.teamId != null ? { id: player.teamId } : null);
+  return getUpcomingFixturesForTeam(schedule, team).map((fixture) => ({
+    week: fixture.week,
+    date: fixture.date,
+    venue: fixture.isHome ? 'home' : 'away',
+    opponentTeamId: fixture.opponent?.id ?? fixture.opponent?.teamId ?? null,
+    opponentName: fixture.opponent?.name || fixture.opponent?.shortName || fixture.opponent?.teamName || null,
+    opponentShortName: fixture.opponent?.shortName ?? null,
+    opponentBadge: fixture.opponent?.badgeColor
+      || fixture.opponent?.badge
+      || fixture.opponent?.shield
+      || fixture.opponent?.logo
+      || fixture.opponent?.image
+      || null,
+  }));
 };
 
 const activityType = (item) => ({
@@ -339,6 +363,7 @@ const saveSnapshot = (leagueApiId, analysisData) => {
  */
 export const buildLeagueExport = async ({ leagueId, leagueName, user, queryClient }) => {
   if (!leagueId) throw new Error('No hay una liga seleccionada para exportar');
+  const exportStartedAt = Date.now();
 
   const [standingsResult, marketResult, leaguesResult, weekResult] = await Promise.allSettled([
     queryClient.fetchQuery({ queryKey: ['standings', leagueId], queryFn: () => fantasyAPI.getLeagueRanking(leagueId), staleTime: 0 }),
@@ -357,6 +382,7 @@ export const buildLeagueExport = async ({ leagueId, leagueName, user, queryClien
   const market = marketResult.status === 'fulfilled' ? marketResult.value : null;
   const leagues = leaguesResult.status === 'fulfilled' ? leaguesResult.value : null;
   const currentWeek = weekResult.status === 'fulfilled' ? weekResult.value : null;
+  const currentWeekNumber = extractWeekNumber(getResponseData(currentWeek));
   const standingsEntries = extractArray(standings);
   const currentTeam = findCurrentTeam(standings, user);
   const currentTeamId = getTeamId(currentTeam);
@@ -387,19 +413,41 @@ export const buildLeagueExport = async ({ leagueId, leagueName, user, queryClien
     currentTeamId ? fetchReceivedOffers({ leagueId, currentTeamId, market, errors }) : Promise.resolve([]),
     fetchActivity({ leagueId, queryClient, errors }),
     marketTrendsService.initialize(),
+    loadUpcomingFixtures({
+      weekNumber: currentWeekNumber,
+      now: exportStartedAt,
+      fetchMatchday: (week) => queryClient.fetchQuery({
+        queryKey: ['matches', week],
+        queryFn: () => fantasyAPI.getMatchday(week),
+        staleTime: 15 * 60 * 1000,
+      }),
+      onError: (error, week) => recordError(errors, 'calendar', error, { week }),
+    }),
+    loadLeagueFinances({ leagueId, standings, user, queryClient }),
   ]);
 
-  const [moneyResult, lineupResult, offersResult, activityResult, trendsResult] = optionalRequests;
+  const [moneyResult, lineupResult, offersResult, activityResult, trendsResult, fixturesResult, financeResult] = optionalRequests;
   if (moneyResult.status === 'rejected') recordError(errors, 'myTeamMoney', moneyResult.reason, { teamId: currentTeamId });
   if (lineupResult.status === 'rejected') recordError(errors, 'lineup', lineupResult.reason, { teamId: currentTeamId });
   if (offersResult.status === 'rejected') recordError(errors, 'receivedOffers', offersResult.reason, { teamId: currentTeamId });
   if (activityResult.status === 'rejected') recordError(errors, 'activity', activityResult.reason);
   if (trendsResult.status === 'rejected') recordError(errors, 'marketTrends', trendsResult.reason);
+  if (fixturesResult.status === 'rejected') recordError(errors, 'calendar', fixturesResult.reason);
+  if (financeResult.status === 'rejected') recordError(errors, 'finances', financeResult.reason);
 
   const currentTeamMoney = moneyResult.status === 'fulfilled' ? getResponseData(moneyResult.value) : null;
   const lineup = lineupResult.status === 'fulfilled' ? getResponseData(lineupResult.value) : null;
   const receivedOffersRaw = offersResult.status === 'fulfilled' ? offersResult.value : [];
   const activityPages = activityResult.status === 'fulfilled' ? activityResult.value : [];
+  const upcomingCalendar = fixturesResult.status === 'fulfilled'
+    ? fixturesResult.value
+    : {
+        fixtures: { byId: {}, byName: {} },
+        matchdays: [],
+        windowStart: new Date(exportStartedAt).toISOString(),
+        windowEnd: new Date(exportStartedAt + FIXTURE_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+      };
+  const leagueFinances = financeResult.status === 'fulfilled' ? financeResult.value : null;
   const league = sanitizeLeague(extractArray(leagues).find((item) => String(item?.id) === String(leagueId)) || null);
   const managersById = new Map(standingsEntries.map((entry) => [String(getManagerId(entry)), {
     teamId: getTeamId(entry), managerName: getManagerName(entry),
@@ -433,6 +481,7 @@ export const buildLeagueExport = async ({ leagueId, leagueName, user, queryClien
       salePrice: marketItem?.salePrice ?? null,
       offers: [],
       lastMatches: summarizeLastMatches(master?.lastStats || player?.lastStats),
+      upcomingFixtures: serializeUpcomingFixtures(upcomingCalendar.fixtures, master),
     };
   }));
   const receivedOffers = buildReceivedOffersAnalysis(receivedOffersRaw);
@@ -455,16 +504,40 @@ export const buildLeagueExport = async ({ leagueId, leagueName, user, queryClien
     },
     managers: standingsEntries.map((entry) => {
       const teamId = getTeamId(entry);
+      const finance = leagueFinances?.finances?.get(String(teamId));
       return {
         teamId,
         managerId: getManagerId(entry),
         managerName: getManagerName(entry),
         teamValue: entry?.teamValue ?? entry?.team?.teamValue ?? null,
-        cash: String(teamId) === String(currentTeamId) ? readTeamMoney({ data: currentTeamMoney }) ?? null : null,
+        cash: finance?.cash ?? (String(teamId) === String(currentTeamId) ? readTeamMoney({ data: currentTeamMoney }) ?? null : null),
+        calculatedCash: finance?.calculatedCash ?? null,
+        cashSource: finance?.cashSource ?? null,
+        cashConfidence: finance?.confidence ?? null,
+        minimumCash: finance?.minimumCash ?? null,
+        maximumCash: finance?.maximumCash ?? null,
+        knownDeviation: finance?.knownDeviation ?? null,
+        financeBreakdown: finance?.breakdown ?? null,
         playersCount: analysisPlayers.filter((player) => String(player.ownerTeamId) === String(teamId)).length,
       };
     }),
+    financeInfo: {
+      initialCash: INITIAL_CASH,
+      method: 'initial_cash_plus_activity_and_clause_snapshots',
+      historyComplete: leagueFinances?.historyComplete ?? false,
+      pagesLoaded: leagueFinances?.pagesLoaded ?? 0,
+      snapshotCount: leagueFinances?.snapshotCount ?? 0,
+      officialBalancesAvailable: leagueFinances?.officialBalancesAvailable ?? 0,
+    },
+    financialActivity: leagueFinances?.activities ?? [],
+    clauseInvestments: leagueFinances?.clauseEvents ?? [],
     players: analysisPlayers,
+    fixtureWindow: {
+      competition: 'LaLiga',
+      days: FIXTURE_WINDOW_DAYS,
+      start: upcomingCalendar.windowStart,
+      end: upcomingCalendar.windowEnd,
+    },
     market: extractArray(market).map((item) => {
       const player = getPlayerMaster(item);
       const trend = player ? marketTrendsService.resolveTrendForPlayer(player) : null;
@@ -496,6 +569,7 @@ export const buildLeagueExport = async ({ leagueId, leagueName, user, queryClien
           updatedAt: bid.updatedAt ?? null,
         } : null,
         sellerTeam: item?.sellerTeam ?? null,
+        upcomingFixtures: serializeUpcomingFixtures(upcomingCalendar.fixtures, player),
       };
     }),
     receivedOffers,
@@ -517,7 +591,7 @@ export const buildLeagueExport = async ({ leagueId, leagueName, user, queryClien
       leagueName: leagueName || league?.name || null,
       currentTeamId,
       currentManager: analysisData.me.managerName,
-      currentWeek: extractWeekNumber(getResponseData(currentWeek)),
+      currentWeek: currentWeekNumber,
     },
     analysisData,
     changesSincePreviousExport,
@@ -530,6 +604,12 @@ export const buildLeagueExport = async ({ leagueId, leagueName, user, queryClien
       receivedOffers: receivedOffersRaw,
       lineup,
       activity: activityPages,
+      financialActivity: leagueFinances?.activities ?? [],
+      clauseSnapshots: leagueFinances?.snapshots ?? [],
+      calendar: upcomingCalendar.matchdays.map(({ week, matches }) => ({
+        week,
+        data: getResponseData(matches) ?? matches,
+      })),
     },
     errors,
   };

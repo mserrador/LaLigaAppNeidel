@@ -5,6 +5,7 @@ import { formatNumber, formatNumberWithDots, getPositionColor } from '../../util
 import teamService from '../../services/teamService';
 import { getClauseStatusColor } from '../../utils/clauseUtils';
 import TeamBadge from '../Common/TeamBadge';
+import UpcomingFixtures from '../Common/UpcomingFixtures';
 
 /**
  * PlayerListItem — single market card.
@@ -24,6 +25,8 @@ const PlayerListItem = ({
   leagueId,
   refetch,
   setOfferChangeKey,
+  upcomingFixtures,
+  fixtureLoading,
 }) => {
   const [isCanceling, setIsCanceling] = useState(false);
   const player = item.playerMaster;
@@ -120,6 +123,8 @@ const PlayerListItem = ({
             <TeamBadge team={player.team} />
           </div>
         </div>
+
+        <UpcomingFixtures fixtures={upcomingFixtures} isLoading={fixtureLoading} />
 
         <div className="bg-yellow-50 dark:bg-gray-400/20 rounded-lg p-3">
           <p className="text-sm text-gray-600 dark:text-gray-300">Precio de venta</p>
