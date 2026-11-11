@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Home, Trophy, ShoppingCart, Users, Calendar, Search, X, Moon, Sun,
-  Activity, LogOut, Shield, User, Target, RefreshCw, Clock, Bug, FileText, Edit3, Smartphone,
+  Activity, LogOut, Shield, User, Target, RefreshCw, Clock, Bug, FileText, Edit3, Smartphone, CalendarClock,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -25,6 +25,7 @@ const MENU_ITEMS = [
   { path: '/activity', icon: Activity, label: 'Actividad' },
   { path: '/standings', icon: Trophy, label: 'Clasificación' },
   { path: '/market', icon: ShoppingCart, label: 'Mercado' },
+  { path: '/programaciones', icon: CalendarClock, label: 'Programaciones' },
   { path: '/teams', icon: Users, label: 'Equipos' },
   { path: '/my-lineup', icon: Edit3, label: 'Mi Alineación' },
   { path: '/lineup', icon: Target, label: 'Ver Alineaciones' },

@@ -9,6 +9,7 @@ import {
   loadUpcomingFixtures,
 } from './upcomingFixtures';
 import { INITIAL_CASH, loadLeagueFinances } from '../services/leagueFinanceService';
+import scheduledActionsService from '../services/scheduledActionsService';
 
 const ACTIVITY_PAGE_COUNT = 5;
 const TEAM_CONCURRENCY = 3;
@@ -30,6 +31,17 @@ const getPlayerId = (player) => player?.playerMaster?.id || player?.playerMaster
 const getPlayerTeamId = (player) => player?.playerTeamId || player?.playerTeam?.playerTeamId || player?.id || null;
 const getPlayerMaster = (player) => player?.playerMaster || player?.player || player || null;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const loadScheduledActionsForExport = async (leagueId) => {
+  try {
+    const status = await scheduledActionsService.status();
+    if (!status?.connected) return [];
+    const result = await scheduledActionsService.list({ leagueId });
+    return result?.actions || [];
+  } catch (_error) {
+    return [];
+  }
+};
 
 const finiteOrNull = (value, label) => {
   if (value == null || value === '') return null;
@@ -424,9 +436,10 @@ export const buildLeagueExport = async ({ leagueId, leagueName, user, queryClien
       onError: (error, week) => recordError(errors, 'calendar', error, { week }),
     }),
     loadLeagueFinances({ leagueId, standings, user, queryClient }),
+    loadScheduledActionsForExport(leagueId),
   ]);
 
-  const [moneyResult, lineupResult, offersResult, activityResult, trendsResult, fixturesResult, financeResult] = optionalRequests;
+  const [moneyResult, lineupResult, offersResult, activityResult, trendsResult, fixturesResult, financeResult, schedulesResult] = optionalRequests;
   if (moneyResult.status === 'rejected') recordError(errors, 'myTeamMoney', moneyResult.reason, { teamId: currentTeamId });
   if (lineupResult.status === 'rejected') recordError(errors, 'lineup', lineupResult.reason, { teamId: currentTeamId });
   if (offersResult.status === 'rejected') recordError(errors, 'receivedOffers', offersResult.reason, { teamId: currentTeamId });
@@ -448,6 +461,7 @@ export const buildLeagueExport = async ({ leagueId, leagueName, user, queryClien
         windowEnd: new Date(exportStartedAt + FIXTURE_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString(),
       };
   const leagueFinances = financeResult.status === 'fulfilled' ? financeResult.value : null;
+  const scheduledActions = schedulesResult.status === 'fulfilled' ? schedulesResult.value : [];
   const league = sanitizeLeague(extractArray(leagues).find((item) => String(item?.id) === String(leagueId)) || null);
   const managersById = new Map(standingsEntries.map((entry) => [String(getManagerId(entry)), {
     teamId: getTeamId(entry), managerName: getManagerName(entry),
@@ -531,6 +545,7 @@ export const buildLeagueExport = async ({ leagueId, leagueName, user, queryClien
     },
     financialActivity: leagueFinances?.activities ?? [],
     clauseInvestments: leagueFinances?.clauseEvents ?? [],
+    scheduledActions,
     players: analysisPlayers,
     fixtureWindow: {
       competition: 'LaLiga',

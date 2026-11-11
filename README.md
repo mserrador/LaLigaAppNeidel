@@ -1,6 +1,6 @@
 # LaLiga Fantasy App
 
-[![Version](https://img.shields.io/badge/version-3.5.6-green.svg)](https://github.com/Externoak/LaLigaApp)
+[![Version](https://img.shields.io/badge/version-3.5.7-green.svg)](https://github.com/mserrador/LaLigaAppNeidel)
 [![React](https://img.shields.io/badge/React-18.2.0-blue.svg)](https://reactjs.org/)
 ![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
 [![Platform](https://img.shields.io/badge/platform-Web%20%7C%20Electron%20-orange.svg)](#plataformas)
@@ -45,15 +45,15 @@ Imagen del menu principal:
 
 **🛡️ Tus datos están completamente seguros:**
 
-- **Sin servidores propios / datos de sesión locales**: Preferencias y sesión se guardan localmente en tu dispositivo; nunca salen de él
+- **Datos locales por defecto**: Preferencias y sesión visual se guardan en tu dispositivo.
 - **Sin telemetría**: No enviamos ningún dato personal a servidores externos
 - **Sin rastreo**: La aplicación no rastrea tu actividad ni uso
 - **Sin análisis**: No recopilamos estadísticas de uso ni información personal
 - **Código abierto**: Puedes revisar el código fuente para verificar nuestra transparencia
-- **Tokens y OAuth**: Los tokens OAuth (Azure B2C/Google) se almacenan localmente y solo se envían a los endpoints del proveedor para iniciar y refrescar sesión.
+- **Tokens y OAuth**: Si activas Programaciones, el refresh token se entrega al backend Docker local y se guarda cifrado con AES-256-GCM. Nunca se guarda la contraseña.
 - **Borrado de datos**: Desde "Cerrar sesión" se eliminan tokens y datos locales de sesión.
 
-La aplicación solo se conecta a la API oficial de LaLiga Fantasy para obtener datos públicos del juego y de tu liga y también utiliza datos de https://www.futbolfantasy.com para leer datos de tendencias del mercado y onces probables. Nunca enviamos tus credenciales, configuraciones personales o datos de navegación a terceros.
+La aplicación solo se conecta a la API oficial de LaLiga Fantasy para obtener datos del juego y de tu liga y también utiliza datos de https://www.futbolfantasy.com para tendencias y onces probables. El scheduler es opcional, se ejecuta en tu propia instalación Docker y no envía sus configuraciones a servicios distintos de LaLiga.
 
 ### ✨ Características principales
 
@@ -65,6 +65,7 @@ La aplicación solo se conecta a la API oficial de LaLiga Fantasy para obtener d
 - 🌙 **Modo oscuro/claro** - Tema personalizable con detección de preferencia del sistema
 - 🔄 **Auto-actualizaciones** - Actualizaciones seamless de la aplicación para versiones de escritorio
 - 📈 **Tendencias del mercado** - Análisis del mercado en tiempo real y valoraciones de jugadores
+- ⏱️ **Programaciones** - Pujas y clausulazos persistentes con revalidación en tiempo real, máximos económicos e historial auditable
 
 ## 📊 Origen y uso de datos
 
@@ -156,6 +157,27 @@ Variables de entorno
 
 Backend:
 - APP_PORT - Puerto del servidor (default: 3005)
+- SCHEDULER_ENABLED - Activa el worker persistente (default: true fuera de tests)
+- SCHEDULER_ENCRYPTION_KEY - Clave obligatoria de 32 bytes en base64 o 64 caracteres hexadecimales
+- SCHEDULER_DATA_DIR - Directorio de SQLite persistente (Docker usa `/app/data`)
+- SCHEDULER_POLL_INTERVAL_MS - Intervalo de consulta de tareas pendientes (mínimo 250 ms)
+
+Antes de arrancar Programaciones, genera una clave y guárdala en tu `.env` local:
+
+```bash
+cp .env.example .env
+openssl rand -base64 32
+```
+
+Copia el resultado en `SCHEDULER_ENCRYPTION_KEY` y ejecuta:
+
+```bash
+docker-compose up --build -d
+```
+
+El volumen `scheduler-data` conserva programaciones, intentos e historial después de reiniciar los contenedores. Si Docker o el equipo están apagados, no existe ejecución en segundo plano. Las pujas vencidas no se recuperan fuera de una tolerancia de 3 segundos; los clausulazos disponen de una ventana controlada de 10 segundos.
+
+En la pestaña **Programaciones** debes enlazar explícitamente la sesión OAuth. Cerrar sesión en la interfaz no detiene el worker; utiliza **Desconectar** dentro de Programaciones para borrar los tokens cifrados y pausar las tareas pendientes. Si el refresh token caduca, la acción no se ejecuta y queda registrada como fallida.
 
 ## 🏗️ Estructura del proyecto
 

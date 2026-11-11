@@ -108,7 +108,7 @@ export async function getToken(email, password) {
     throw new Error(result.error_description || result.error || 'Authentication failed');
   }
 
-  return result;
+  return { ...result, client_id: AUTH_CONFIG.EMAIL_CLIENT_ID };
 }
 
 /**
@@ -246,6 +246,52 @@ export function decodeJWT(token) {
 }
 
 /**
+ * Normalize and validate credentials pasted into the manual login dialog.
+ * Accepts either a raw JWT, an Authorization header value, or the complete
+ * OAuth token response copied from LaLiga.
+ */
+export function parseManualTokenInput(value) {
+  const input = typeof value === 'string' ? value.trim() : '';
+  if (!input) {
+    throw new Error('El token no puede estar vacío');
+  }
+
+  let tokenOrData;
+  if (input.startsWith('{')) {
+    try {
+      tokenOrData = JSON.parse(input);
+    } catch {
+      throw new Error('Formato JSON inválido. Copia el contenido completo desde { hasta }');
+    }
+
+    if (!tokenOrData || typeof tokenOrData !== 'object' || (!tokenOrData.id_token && !tokenOrData.access_token)) {
+      throw new Error('El JSON debe contener "id_token" o "access_token"');
+    }
+  } else {
+    tokenOrData = input.replace(/^Bearer\s+/i, '').trim();
+  }
+
+  // Fantasy accepts the B2C identity token as its Bearer. Prefer it when the
+  // copied OAuth response also contains an access token for another audience.
+  const bearer = typeof tokenOrData === 'string'
+    ? tokenOrData
+    : tokenOrData.id_token || tokenOrData.access_token;
+  const payload = decodeJWT(bearer);
+
+  if (!payload) {
+    throw new Error('El Bearer no tiene formato JWT válido');
+  }
+  if (!payload.exp) {
+    throw new Error('El token no contiene una fecha de caducidad');
+  }
+  if (payload.exp * 1000 <= Date.now()) {
+    throw new Error('El token ha caducado. Obtén uno nuevo desde LaLiga');
+  }
+
+  return tokenOrData;
+}
+
+/**
  * Extract user information from JWT tokens
  * @param {Object} tokens - Token response object
  * @returns {Object} User information
@@ -358,26 +404,29 @@ export function buildLoginPayload(tokenOrData) {
   let tokens;
 
   if (typeof tokenOrData === 'string') {
+    const payload = decodeJWT(tokenOrData);
     tokens = {
       access_token: tokenOrData,
       token_type: 'Bearer',
       expires_in: 86400,
-      expires_on: calculateTokenExpiration({ expires_in: 86400 }),
+      expires_on: payload?.exp || calculateTokenExpiration({ expires_in: 86400 }),
     };
   } else {
+    const bearer = tokenOrData.id_token || tokenOrData.access_token;
+    const payload = decodeJWT(bearer);
     tokens = {
       // LaLiga's B2C returns only an id_token for the `openid` scope, and the
       // API uses the id_token as the bearer (see refreshToken's id_token||...).
       // Fall back to it so token responses without an access_token still auth.
-      access_token: tokenOrData.access_token || tokenOrData.id_token,
+      access_token: bearer,
       id_token: tokenOrData.id_token,
       refresh_token: tokenOrData.refresh_token,
       token_type: tokenOrData.token_type || 'Bearer',
       expires_in: tokenOrData.expires_in || tokenOrData.id_token_expires_in || 86400,
-      expires_on: calculateTokenExpiration(tokenOrData),
+      expires_on: tokenOrData.expires_on || payload?.exp || calculateTokenExpiration(tokenOrData),
       // Remember which B2C client issued these tokens so refresh uses the same
       // one (the interactive/Google flow uses OAUTH_CLIENT_ID, not CLIENT_ID).
-      client_id: tokenOrData.client_id,
+      client_id: tokenOrData.client_id || (typeof payload?.aud === 'string' ? payload.aud : undefined),
     };
   }
 
@@ -419,6 +468,7 @@ const authService = {
   refreshToken,
   buildAuthorizeUrl,
   exchangeCodeForTokens,
+  parseManualTokenInput,
   decodeJWT,
   extractUserFromTokens,
   isTokenExpired,

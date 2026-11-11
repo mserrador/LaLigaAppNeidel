@@ -1,5 +1,6 @@
 const os = require('os');
 const { startServer: startUnifiedServer } = require('../server');
+const { getElectronSchedulerConfig } = require('./scheduler-config');
 const {
     WILDCARD_OR_LOOPBACK_HOSTS,
     DEFAULT_LOCAL_HOSTS,
@@ -89,6 +90,7 @@ async function ensureUnifiedServer(activeAppOrigins) {
         host,
         serveStatic: true,
     };
+    const schedulerConfig = getElectronSchedulerConfig();
 
     const allowedOriginsEnv = process.env.ELECTRON_ALLOWED_ORIGINS;
     const allowedOrigins = allowedOriginsEnv
@@ -151,6 +153,7 @@ async function ensureUnifiedServer(activeAppOrigins) {
                 ...baseAppConfig,
                 port: candidate,
             },
+            scheduler: schedulerConfig,
         };
 
         if (allowedOriginSet.size > 0) {

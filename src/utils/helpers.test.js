@@ -125,6 +125,14 @@ describe('parseJwtPayload', () => {
         expect(parseJwtPayload(token)).toEqual(payload);
     });
 
+    it('decodes URL-safe base64 payloads containing UTF-8 text', () => {
+        const payload = { name: 'José', exp: 2000000000 };
+        const bytes = unescape(encodeURIComponent(JSON.stringify(payload)));
+        const encoded = btoa(bytes).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+
+        expect(parseJwtPayload(`header.${encoded}.signature`)).toEqual(payload);
+    });
+
     test('devuelve null para tokens inválidos', () => {
         expect(parseJwtPayload(null)).toBeNull();
         expect(parseJwtPayload('a.b')).toBeNull();

@@ -15,6 +15,11 @@ services:
       # published to the host, so this stays contained to the internal network.
       - APP_HOST=0.0.0.0
       - APP_ALLOWED_ORIGINS=*
+      - SCHEDULER_ENABLED=true
+      - SCHEDULER_DATA_DIR=/app/data
+      - SCHEDULER_ENCRYPTION_KEY=${SCHEDULER_ENCRYPTION_KEY:-}
+    volumes:
+      - scheduler-data:/app/data
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://0.0.0.0:3005/health"]
       interval: 30s
@@ -39,3 +44,6 @@ services:
 networks:
   internal:
     driver: bridge
+
+volumes:
+  scheduler-data:

@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY craco.config.js ./
 
-RUN npm ci --silent
+RUN npm ci --silent --ignore-scripts
 
 COPY . .
 

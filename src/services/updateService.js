@@ -6,9 +6,9 @@ import packageJson from '../../package.json';
 class UpdateService {
     constructor() {
         this.currentVersion = process.env.REACT_APP_VERSION || packageJson.version;
-        this.updateCheckUrl = process.env.REACT_APP_UPDATE_CHECK_URL || 'https://raw.githubusercontent.com/Externoak/LaLigaApp/master/version.json';
+        this.updateCheckUrl = process.env.REACT_APP_UPDATE_CHECK_URL || 'https://raw.githubusercontent.com/mserrador/LaLigaAppNeidel/main/version.json';
         // GitHub releases base — overridable via REACT_APP_GITHUB_RELEASES_URL.
-        const releasesBase = process.env.REACT_APP_GITHUB_RELEASES_URL || 'https://github.com/Externoak/LaLigaApp/releases/latest';
+        const releasesBase = process.env.REACT_APP_GITHUB_RELEASES_URL || 'https://github.com/mserrador/LaLigaAppNeidel/releases/latest';
         this.releaseUrl = releasesBase;
         this.downloadUrl = `${releasesBase.replace(/\/$/, '')}/download/LaLigaApp.zip`;
 

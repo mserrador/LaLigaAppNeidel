@@ -20,44 +20,19 @@ const oauthLog = (...args) => {
 const TokenModal = ({ isOpen, onClose, onSubmit, value, onChange }) => {
   if (!isOpen) return null;
 
-  // Validate JSON format and required keys
+  // Validate the same formats that the submit handler accepts.
   const validateToken = () => {
-    if (!value.trim()) {
-      return { isValid: false, error: 'El token no puede estar vacío' };
-    }
-
     try {
-      const parsed = JSON.parse(value.trim());
-
-      // Check if it has either access_token or id_token
-      if (!parsed.access_token && !parsed.id_token) {
-        return {
-          isValid: false,
-          error: 'El JSON debe contener al menos "access_token" o "id_token"'
-        };
-      }
-
-      // Additional validation for token_type if access_token exists
-      if (parsed.access_token && !parsed.token_type) {
-        return {
-          isValid: false,
-          error: 'El JSON debe contener "token_type" cuando tiene "access_token"'
-        };
-      }
-
-      // Check for refresh_token - essential for maintaining sessions
-      if (!parsed.refresh_token) {
-        return {
-          isValid: false,
-          error: 'El JSON debe contener "refresh_token" para mantener la sesión activa'
-        };
-      }
-
-      return { isValid: true, error: null };
+      const parsed = authService.parseManualTokenInput(value);
+      return {
+        isValid: true,
+        error: null,
+        hasRefreshToken: typeof parsed === 'object' && Boolean(parsed.refresh_token)
+      };
     } catch (error) {
       return {
         isValid: false,
-        error: 'Formato JSON inválido. Asegúrate de copiar el JSON completo desde { hasta }'
+        error: error.message
       };
     }
   };
@@ -100,7 +75,7 @@ const TokenModal = ({ isOpen, onClose, onSubmit, value, onChange }) => {
                       ? 'border-gray-200 focus:ring-primary-400 focus:border-primary-400' 
                       : 'border-red-300 focus:ring-red-400 focus:border-red-400'
                   }`}
-                  placeholder='Pega aquí el JSON completo, por ejemplo:\n{\n  "access_token": "...",\n  "token_type": "Bearer",\n  "expires_in": 3600,\n  ...\n}'
+                  placeholder='Pega aquí Bearer eyJ... o el JSON OAuth completo de LaLiga'
                 />
                 <div className={`absolute inset-0 rounded-2xl bg-gradient-to-r transition-all duration-300 pointer-events-none ${
                   validation.isValid 
@@ -141,7 +116,9 @@ const TokenModal = ({ isOpen, onClose, onSubmit, value, onChange }) => {
                     <div className="w-5 h-5 bg-green-500 rounded-full mr-3 flex items-center justify-center">
                       <span className="text-white text-xs font-bold">✓</span>
                     </div>
-                    <p className="text-green-700 text-sm font-medium">JSON válido y contiene los tokens requeridos</p>
+                    <p className="text-green-700 text-sm font-medium">
+                      Token válido{validation.hasRefreshToken ? ' y renovable' : '; tendrás que volver a entrar cuando caduque'}
+                    </p>
                   </div>
                 </motion.div>
               )}
@@ -284,22 +261,8 @@ const Login = () => {
     setError(null);
 
     try {
-      let tokenData = tokenInputValue.trim();
-
-      if (tokenData.startsWith('{')) {
-        const parsed = JSON.parse(tokenData);
-        if (parsed.access_token || parsed.id_token) {
-          // Pass the complete OAuth response to preserve refresh_token
-          await login(parsed);
-        } else {
-          throw new Error('No se encontró access_token o id_token en el JSON');
-        }
-      } else {
-        if (tokenData.startsWith('Bearer ')) {
-          tokenData = tokenData.substring(7);
-        }
-        await login(tokenData);
-      }
+      const tokenData = authService.parseManualTokenInput(tokenInputValue);
+      await login(tokenData);
     } catch (error) {
       setError(`Token inválido: ${error.message || 'Formato incorrecto'}`);
       notifyUpdateIfAvailable();
@@ -823,4 +786,3 @@ const Login = () => {
 };
 
 export default Login;
-

@@ -98,15 +98,8 @@ jobs:
         $forceBuild = "${{ github.event.inputs.force_build }}" -eq "true"
 
         if ([string]::IsNullOrEmpty($previousVersion)) {
-          if ($isManualTrigger -or $forceBuild) {
-            echo "No previous version found - proceeding with build (manual trigger or force build)"
-            echo "SHOULD_BUILD=true" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "No previous version found - skipping build (no version change to compare)"
-            echo "SHOULD_BUILD=false" >> $env:GITHUB_OUTPUT
-            echo "::notice::Skipping build - no previous version to compare against. To force a build, bump the version number or trigger manually."
-            exit 0
-          }
+          echo "No previous release found - proceeding with initial build"
+          echo "SHOULD_BUILD=true" >> $env:GITHUB_OUTPUT
         }
 
         if ($currentVersion -eq $previousVersion) {

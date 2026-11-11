@@ -170,7 +170,12 @@ export const parseJwtPayload = (token) => {
     try {
         const parts = token.split('.');
         if (parts.length !== 3) return null;
-        return JSON.parse(atob(parts[1]));
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+        const binary = atob(padded);
+        const json = decodeURIComponent(Array.from(binary, (char) =>
+            `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`).join(''));
+        return JSON.parse(json);
     } catch (error) {
         return null;
     }

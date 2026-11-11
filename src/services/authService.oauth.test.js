@@ -87,7 +87,10 @@ describe('getToken', () => {
   it('returns the token JSON from the ROPC policy', async () => {
     global.fetch = jest.fn().mockResolvedValue(jsonResponse(200, { id_token: 'b' }));
 
-    await expect(getToken('a@b.c', 'pw')).resolves.toEqual({ id_token: 'b' });
+    await expect(getToken('a@b.c', 'pw')).resolves.toEqual({
+      id_token: 'b',
+      client_id: 'af88bcff-1157-40a0-b579-030728aacf0b'
+    });
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch.mock.calls[0][0]).toContain('p=B2C_1A_ResourceOwnerv2');
   });
@@ -97,7 +100,10 @@ describe('getToken', () => {
       .mockResolvedValueOnce(REMOVED_POLICY_PAGE)
       .mockResolvedValueOnce(jsonResponse(200, { id_token: 'b' }));
 
-    await expect(getToken('a@b.c', 'pw')).resolves.toEqual({ id_token: 'b' });
+    await expect(getToken('a@b.c', 'pw')).resolves.toEqual({
+      id_token: 'b',
+      client_id: 'af88bcff-1157-40a0-b579-030728aacf0b'
+    });
     expect(global.fetch.mock.calls[1][0]).toContain('p=B2C_1A_5ULAIP_PARAMETRIZED_SIGNIN');
   });
 

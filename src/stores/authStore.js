@@ -232,6 +232,13 @@ export const useAuthStore = create(
               set({ user: completeUser });
             }
           } catch (apiError) {
+            const status = apiError.response?.status;
+            if (status === 401 || status === 403) {
+              await tokenStorage.clear();
+              set({ isAuthenticated: false, user: null, tokens: null });
+              throw new Error('LaLiga ha rechazado el token. Obtén un Bearer nuevo e inténtalo otra vez.');
+            }
+
             // Check if the error is due to invalid refresh token
             if (apiError.message && apiError.message.includes('invalid_grant')) {
               // Clear the invalid refresh token but keep the access token for this session

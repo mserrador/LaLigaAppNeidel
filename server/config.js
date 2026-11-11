@@ -94,6 +94,23 @@ const defaultConfig = {
     format: process.env.LOG_FORMAT || 'combined',
     level: process.env.LOG_LEVEL || 'info',
     silenceHealth: toBool(process.env.LOG_SILENCE_HEALTH, true)
+  },
+  scheduler: {
+    enabled: toBool(process.env.SCHEDULER_ENABLED, process.env.NODE_ENV !== 'test'),
+    dataDir: process.env.SCHEDULER_DATA_DIR
+      ? path.resolve(projectRoot, process.env.SCHEDULER_DATA_DIR)
+      : path.join(projectRoot, 'data'),
+    databasePath: process.env.SCHEDULER_DATABASE_PATH
+      ? path.resolve(projectRoot, process.env.SCHEDULER_DATABASE_PATH)
+      : undefined,
+    encryptionKey: process.env.SCHEDULER_ENCRYPTION_KEY,
+    pollIntervalMs: toInt(process.env.SCHEDULER_POLL_INTERVAL_MS, 500),
+    fantasyTarget: process.env.PROXY_FANTASY_TARGET || 'https://fantasy-api.llt-services.com',
+    competitionId: process.env.REACT_APP_COMPETITION_ID || process.env.COMPETITION_ID || '1',
+    oauthTokenUrl: process.env.SCHEDULER_OAUTH_TOKEN_URL
+      || 'https://login.laliga.es/laligadspprob2c.onmicrosoft.com/oauth2/v2.0/token?p=B2C_1A_5ULAIP_PARAMETRIZED_SIGNIN',
+    oauthClientId: process.env.SCHEDULER_OAUTH_CLIENT_ID || '6457fa17-1224-416a-b21a-ee6ce76e9bc0',
+    timeoutMs: toInt(process.env.SCHEDULER_UPSTREAM_TIMEOUT_MS, 15000),
   }
 };
 

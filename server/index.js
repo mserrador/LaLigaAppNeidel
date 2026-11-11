@@ -14,6 +14,8 @@ const axios = require(path.join(path.dirname(axiosPackagePath), 'dist/node/axios
 const { loadConfig } = require('./config');
 const { isOriginAllowed } = require('./security');
 const { buildPairingHandlers } = require('./pairing');
+const { createSchedulerSubsystem } = require('./scheduler');
+const { createEconomicMutex } = require('./economicMutex');
 
 // Ensure axios uses the Node http adapter even when XMLHttpRequest is present.
 axios.defaults.adapter = 'http';
@@ -256,6 +258,27 @@ const createFantasyProxy = (config) => {
   });
 };
 
+const createEconomicMutationGuard = (config, economicMutex) => async (req, res, next) => {
+  const method = (req.method || '').toUpperCase();
+  const isFantasyMutation = !['GET', 'HEAD', 'OPTIONS'].includes(method)
+    && [config.proxy.basePath, config.proxy.statsBasePath].some((basePath) => req.path.startsWith(basePath));
+  if (!isFantasyMutation) {
+    next();
+    return;
+  }
+
+  const release = await economicMutex.acquire();
+  let released = false;
+  const releaseOnce = () => {
+    if (released) return;
+    released = true;
+    release();
+  };
+  res.once('finish', releaseOnce);
+  res.once('close', releaseOnce);
+  next();
+};
+
 const buildMarketHandler = (config) => {
   const allowedHosts = new Set(config.proxy.marketAllowedHosts);
   const defaultUrl = config.proxy.marketDefaultUrl;
@@ -449,7 +472,9 @@ const buildApp = (config) => {
   const corsMiddleware = buildCorsMiddleware(config);
   const limiter = buildRateLimiter(config);
 
+  const economicMutex = createEconomicMutex();
   const fantasyProxy = createFantasyProxy(config);
+  const economicMutationGuard = createEconomicMutationGuard(config, economicMutex);
   const lineupHandler = buildLineupHandler(config);
   const marketHandler = buildMarketHandler(config);
   const githubProxyHandler = buildGitHubProxyHandler(config);
@@ -462,6 +487,8 @@ const buildApp = (config) => {
       return hosts.map((ip) => `http://${ip}:${port}`);
     },
   });
+  const scheduler = createSchedulerSubsystem(config.scheduler, { economicMutex });
+  app.locals.scheduler = scheduler;
 
   if (config.app.trustProxy) {
     app.set('trust proxy', config.app.trustProxy);
@@ -529,7 +556,12 @@ const buildApp = (config) => {
   });
 
   app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    const schedulerStatus = scheduler.status();
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      scheduler: { enabled: schedulerStatus.enabled, running: schedulerStatus.running },
+    });
   });
 
   app.use(config.proxy.basePath, limiter);
@@ -544,7 +576,8 @@ const buildApp = (config) => {
   // Emparejar el móvil con la sesión del PC (QR). Antes del proxy: /api/* iría a LaLiga.
   app.post('/api/pair', pairing.createHandler);
   app.post('/api/pair/claim', pairing.claimHandler);
-  app.use(fantasyProxy);
+  app.use('/api/scheduler', scheduler.router);
+  app.use(economicMutationGuard, fantasyProxy);
 
   const resolvedStaticDir = config.app.staticDir;
   const hasBuild =
@@ -584,7 +617,7 @@ const buildApp = (config) => {
     res.status(404).json({ error: 'Not found', path: req.originalUrl });
   });
 
-  app.use((err, req, res, next) => {
+  app.use((err, req, res, _next) => {
     console.error('Unified server error:', err);
     res.status(500).json({ error: 'Internal server error' });
   });
@@ -655,10 +688,18 @@ const startServer = async (overrides = {}) => {
   const resolvedHost = typeof address === 'string' ? address : address.address;
   const resolvedPort = typeof address === 'string' ? config.app.port : address.port;
 
-  const close = () =>
-    new Promise((resolve, reject) => {
+  await app.locals.scheduler.start();
+
+  let closed = false;
+  const close = async () => {
+    if (closed) return;
+    closed = true;
+    await app.locals.scheduler.stop();
+    await new Promise((resolve, reject) => {
       server.close((err) => (err ? reject(err) : resolve()));
     });
+    app.locals.scheduler.close?.();
+  };
 
   const loopbackHost = normalizeLoopbackHost(resolvedHost);
   const baseHost = !loopbackHost ? '127.0.0.1' : loopbackHost;
@@ -679,13 +720,26 @@ const startServer = async (overrides = {}) => {
 
 if (require.main === module) {
   startServer()
-    .then(({ url, host, port }) => {
+    .then((instance) => {
+      const { url, host, port } = instance;
       console.log(`Unified server listening at ${url}`);
       if (WILDCARD_HOSTS.has(String(host).toLowerCase())) {
         collectLanIPv4Addresses().forEach((ip) => {
           console.log(`  Acceso en red local: http://${ip}:${port}`);
         });
       }
+      const shutdown = async (signal) => {
+        console.log(`Received ${signal}; stopping server and scheduler`);
+        try {
+          await instance.close();
+          process.exitCode = 0;
+        } catch (error) {
+          console.error('Graceful shutdown failed:', error);
+          process.exitCode = 1;
+        }
+      };
+      process.once('SIGTERM', () => shutdown('SIGTERM'));
+      process.once('SIGINT', () => shutdown('SIGINT'));
     })
     .catch((error) => {
       console.error('Failed to start unified server:', error);
@@ -697,11 +751,5 @@ module.exports = {
   buildApp,
   startServer,
 };
-
-
-
-
-
-
 
 

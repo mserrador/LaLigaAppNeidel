@@ -1,4 +1,5 @@
 import { fantasyAPI } from '../services/api';
+import scheduledActionsService from '../services/scheduledActionsService';
 import {
   buildLeagueExport,
   createLeagueExportFilename,
@@ -16,6 +17,14 @@ jest.mock('../services/api', () => ({
     getCurrentLineup: jest.fn(),
     getPlayerOffer: jest.fn(),
     getLeagueActivity: jest.fn(),
+  },
+}));
+
+jest.mock('../services/scheduledActionsService', () => ({
+  __esModule: true,
+  default: {
+    status: jest.fn().mockResolvedValue({ connected: true }),
+    list: jest.fn().mockResolvedValue({ actions: [{ id: 'schedule-1', type: 'bid', status: 'scheduled' }] }),
   },
 }));
 
@@ -91,6 +100,10 @@ describe('buildLeagueExport', () => {
       id: 'offer-1', money: 120, status: 'pending', expirationDate: '2026-09-17T12:00:00Z', bidderTeam: { id: 'team-2' },
     }] });
     fantasyAPI.getLeagueActivity.mockResolvedValue({ data: [] });
+    scheduledActionsService.status.mockResolvedValue({ connected: true });
+    scheduledActionsService.list.mockResolvedValue({
+      actions: [{ id: 'schedule-1', type: 'bid', status: 'scheduled' }],
+    });
     fantasyAPI.getTeamData.mockImplementation((_leagueId, teamId) => Promise.resolve({
       data: {
         id: teamId,
@@ -145,6 +158,9 @@ describe('buildLeagueExport', () => {
     expect(result.analysisData.players.find((player) => player.ownerTeamId === 'team-1').upcomingFixtures)
       .toHaveLength(2);
     expect(result.analysisData.market[0].upcomingFixtures).toHaveLength(2);
+    expect(result.analysisData.scheduledActions).toEqual([
+      expect.objectContaining({ id: 'schedule-1', type: 'bid', status: 'scheduled' }),
+    ]);
     expect(result.raw.calendar.map(({ week }) => week)).toEqual([5, 6, 7]);
     expect(result.exportInfo.leagueApiId).toBe(12345);
     expect(JSON.stringify(result)).not.toContain('Bearer secret');

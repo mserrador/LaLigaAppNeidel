@@ -13,7 +13,7 @@ const ChangelogModal = ({ isOpen, onClose }) => {
       // (/api/proxy-github) para evitar CORS. En dev el React corre en :3006
       // pero el proxy está en :3005, así que una ruta relativa caía en :3006 y
       // devolvía 404; resolveProxyOrigin (api.js) resuelve la base correcta.
-      const updateCheckUrl = process.env.REACT_APP_UPDATE_CHECK_URL || 'https://raw.githubusercontent.com/Externoak/LaLigaApp/master/version.json';
+      const updateCheckUrl = process.env.REACT_APP_UPDATE_CHECK_URL || 'https://raw.githubusercontent.com/mserrador/LaLigaAppNeidel/main/version.json';
       const fetchUrl = `${resolveProxyOrigin()}/api/proxy-github?url=${encodeURIComponent(updateCheckUrl)}`;
 
       fetch(fetchUrl, { headers: { 'Accept': 'application/json' } })

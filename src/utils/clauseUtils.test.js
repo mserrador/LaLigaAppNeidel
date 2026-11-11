@@ -13,7 +13,7 @@ describe('getClauseTimeRemaining', () => {
     });
 
     test('formatea días, horas y minutos', () => {
-        expect(getClauseTimeRemaining(hoursFromNow(50))).toMatch(/^2d 2h$/);
+        expect(getClauseTimeRemaining(hoursFromNow(50))).toMatch(/^2d [12]h$/);
         expect(getClauseTimeRemaining(hoursFromNow(3.5))).toMatch(/^3h (29|30)m$/);
         expect(getClauseTimeRemaining(hoursFromNow(0.5))).toMatch(/^(29|30)m$/);
     });

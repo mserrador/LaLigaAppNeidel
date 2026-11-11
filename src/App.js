@@ -25,6 +25,7 @@ const MarketTrends = React.lazy(() => import(/* webpackChunkName: "market-trends
 const AlertManager = React.lazy(() => import(/* webpackChunkName: "alerts" */ './components/Alerts/AlertManager'));
 const Settings = React.lazy(() => import(/* webpackChunkName: "settings" */ './components/Settings/Settings'));
 const OncesProbles = React.lazy(() => import(/* webpackChunkName: "onces" */ './components/OncesProbles/OncesProbles'));
+const Programaciones = React.lazy(() => import(/* webpackChunkName: "programaciones" */ './components/Programaciones/Programaciones'));
 
 function App() {
   const initializeAuth = useAuthStore((state) => state.initializeAuth);
@@ -84,6 +85,7 @@ function AppRoutes() {
         <Route path="/market" element={<Market />} />
         <Route path="/market/trends" element={<MarketTrends />} />
         <Route path="/market/ofertas" element={<Market />} />
+        <Route path="/programaciones" element={<Programaciones />} />
         <Route path="/teams" element={<Teams />} />
         <Route path="/teams/:teamId" element={<Teams />} />
         <Route path="/teams/:teamId/lineup" element={<Lineup />} />
