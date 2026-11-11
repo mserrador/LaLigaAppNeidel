@@ -1,6 +1,7 @@
 {
-  "version": "3.5.7",
-  "downloadUrl": "https://github.com/mserrador/LaLigaAppNeidel/releases/latest/download/LaLigaApp.zip",
-  "notes": "NUEVO (v3.5.7): Programaciones persistentes de pujas y clausulazos con historial y límites económicos. CORRECCIONES: inicio de sesión manual compatible con Bearer/JWT y JSON OAuth, detección de tokens caducados y validación frente a LaLiga. La aplicación de Windows guarda los datos del programador en una ubicación persistente y protege sus credenciales con el almacén seguro del sistema.",
-  "publishedAt": "2026-11-11T00:00:00Z"
+    "version":  "3.5.7",
+    "downloadUrl":  "https://github.com/mserrador/LaLigaAppNeidel/releases/latest/download/LaLigaApp.zip",
+    "notes":  "NUEVO (v3.5.7): Programaciones persistentes de pujas y clausulazos con historial y límites económicos. CORRECCIONES: inicio de sesión manual compatible con Bearer/JWT y JSON OAuth, detección de tokens caducados y validación frente a LaLiga. La aplicación de Windows guarda los datos del programador en una ubicación persistente y protege sus credenciales con el almacén seguro del sistema.",
+    "publishedAt":  "2026-11-11T13:36:24Z",
+    "sha256":  "4fd0577d88b12b9f951ef87efd54f34ad6fd983c6298552e7422ae375c7b76a9"
 }
